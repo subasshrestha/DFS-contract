@@ -10,7 +10,14 @@ contract Storage {
         string fileType;
         uint256 timestamp;
     }
+    struct PeerDetails {
+        address peerAddress;
+        string peerName;
+        uint256 timestamp;
+    }
     mapping (address=>FileDetails[]) files;
+    
+    PeerDetails [] peers;
 
     event FileAddSuccess(string fileHash, string fileName, string fileType, uint256 timestamp);
 
@@ -37,9 +44,11 @@ contract Storage {
         require(sent, "Failed to Withdraw");
     }
     
-    function addFile(string memory fileHash, string memory fileName, string memory fileType) public{ 
+    function addFile(string memory fileHash, string memory fileName, string memory fileType) public payable{ 
+        for(uint i = 0; i < peers.length; i++){
+            payable(peers[i].peerAddress).transfer(msg.value/peers.length);
+        }
         files[msg.sender].push(FileDetails(fileHash, fileName, fileType, block.timestamp));
-
         emit FileAddSuccess(fileHash, fileName, fileType, block.timestamp);
     }
 
@@ -48,7 +57,30 @@ contract Storage {
     }
 
     function getFilesCount() public view returns (uint256){
-        // uint256 filesCount = 
         return files[msg.sender].length;
+    }
+
+    function addPeer(address peerAddress, string memory peerName) public onlyOwner{
+        for(uint i = 0; i < peers.length; i++){
+            if(keccak256(abi.encodePacked(peers[i].peerName)) == keccak256(abi.encodePacked(peerName))){
+                revert("Peer Already Exists");
+            }
+        }
+        peers.push(PeerDetails(peerAddress, peerName, block.timestamp));
+    }
+
+    function removePeer(uint256 index) public onlyOwner{
+        for(uint i = index; i < peers.length-1; i++){
+            peers[i] = peers[i+1];
+        }
+        peers.pop();
+    }
+
+    function getAllPeers() public view returns (PeerDetails [] memory){
+        return peers;
+    }
+
+    function getOwner() public view returns (address){
+        return owner;
     }
 }
